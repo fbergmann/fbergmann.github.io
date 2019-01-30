@@ -5,8 +5,8 @@
 * [Simulate 3D](https://github.com/fbergmann/3DSimulate)
 
 
-<html>
+<details>
   <div style="display:none">
     test
   </div>
-</html
+</details>

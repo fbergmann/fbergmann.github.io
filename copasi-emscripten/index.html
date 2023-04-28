@@ -1,196 +1,279 @@
 <html lang="en">
 
 <head>
-    <script src="bind_test.js" type="text/javascript"></script>
-    <script src="bind_test.wasm" type="application/wasm"> </script>
-    <script src="https://code.highcharts.com/highcharts.js"></script>
-    <script src="https://code.highcharts.com/modules/exporting.js"></script>
-    <script src="https://code.highcharts.com/modules/export-data.js"></script>
-    <script src="https://code.highcharts.com/modules/accessibility.js"></script>
-    <!-- Latest compiled and minified CSS -->
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+  <script src="bind_test.js" type="text/javascript"></script>
+  <script src="bind_test.wasm" type="application/wasm"> </script>
+  <script src="https://code.highcharts.com/highcharts.js"></script>
+  <script src="https://code.highcharts.com/modules/exporting.js"></script>
+  <script src="https://code.highcharts.com/modules/export-data.js"></script>
+  <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+  <!-- Latest compiled and minified CSS -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
 
-    <!-- jQuery library -->
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+  <!-- jQuery library -->
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
 
-    <!-- Latest compiled JavaScript -->
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Latest compiled JavaScript -->
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 
+<script>
+  var getVersion = null;
+  var getMessages = null;
+  var simulateModel = null;
+  var initCps = null;
+  var jsAllocateUTF8 = null;
+  var jsUTF8ToString = null;
+  var jsFree = null;
+  var destroy = null;
+
+  function initFunctions() {
+    getVersion = Module.cwrap('getVersion', 'string', ['null']);
+    getMessages = Module.cwrap('getMessages', 'string', ['null']);
+    initCps = Module.cwrap('initCps', 'null', ['null']);
+    destroy = Module.cwrap('destroy', 'null', ['null']);
+    simulateModel = Module.cwrap('simulateModel', 'number', ['number', 'number']);
+    jsUTF8ToString = (strPtr) => Module.UTF8ToString(strPtr);
+    jsAllocateUTF8 = (newStr) => Module.allocateUTF8(newStr);
+    jsFree = Module.cwrap('cpsFree', 'null', ['number']);
+
+    console.log(getVersion());
+    initCps();
+  };
+
+  Module.onRuntimeInitialized = _ => {
+
+    initFunctions();
+
+  };
+
+  $(document).ready(function () {
+
+    $('#myTab a').click(function (e) {
+      e.preventDefault()
+      $(this).tab('show')
+    });
+
+    document.getElementById('inputfile')
+      .addEventListener('change', function () {
+        var fr = new FileReader();
+        fr.onload = function () {
+          var modelString = fr.result;
+          document.getElementById("cps").value = modelString;
+        }
+        fr.readAsText(this.files[0]);
+      });
+
+  });
+
+
+
+  function clearForm() {
+    document.getElementById("cps").value = "";
+    document.getElementById("yaml").value = "{}";
+    document.getElementById('inputfile').value = "";
+    document.getElementById("data").innerHTML = "";
+    document.getElementById("chart").innerHTML = "";
+    destroy();
+  };
+
+  function runSimulation() {
+    if (simulateModel == null) {
+      initFunctions();
+    }
+    document.getElementById("data").innerHTML = "";
+    document.getElementById("chart").innerHTML = "";
+
+    var cpsCode = document.getElementById("cps").value;
+    var ptrCode = Module.allocateUTF8(cpsCode);
+    var yamlCode = document.getElementById("yaml").value;
+    var ptrYaml = Module.allocateUTF8(yamlCode);
+    var ptrResult = simulateModel(ptrCode, ptrYaml);
+    var result = Module.UTF8ToString(ptrResult);
+
+    jsFree(ptrCode);
+    jsFree(ptrYaml);
+    jsFree(ptrResult);
+
+    document.getElementById("data").innerHTML = result;
+
+    if (result.startsWith("Error")) {
+      document.getElementById("data").innerHTML += getMessages();
+      return;
+    }
+
+    // set class of first child to table
+    document.getElementById("data").firstChild.className = "table";
+    document.getElementById("data").firstChild.id = "dataTable";
+
+    // create chart from data table
+    var table = document.getElementById("data").firstChild;
+    var data = [];
+    var headers = [];
+    var series = []
+    var numRows = table.rows.length;
+    table.cols
+    // get data by column
+    for (var i = 0; i < table.rows.length; i++) {
+      var row = table.rows[i];
+      var rowData = [];
+      for (var j = 0; j < row.cells.length; j++) {
+        if (i == 0) {
+          headers.push(row.cells[j].innerHTML);
+        } else {
+          rowData.push(parseFloat(row.cells[j].innerHTML));
+        }
+      }
+      if (i != 0) {
+        data.push(rowData);
+      }
+    }
+
+    // use highcharts to display data
+    var chart = Highcharts.chart('chart', {
+      chart: {
+        type: 'line'
+      },
+      title: {
+        text: 'Simulation Results'
+      },
+      xAxis: {
+        title: {
+          text: 'Time'
+        }
+      },
+      plotOptions: {
+        line: {
+          dataLabels: {
+            enabled: false
+          },
+          enableMouseTracking: true
+        }
+      }
+    });
+
+    for (var i = 1; i < headers.length; i++) {
+      var seriesData = [];
+      for (var j = 0; j < data.length; j++) {
+        seriesData.push([data[j][0], data[j][i]]);
+      }
+      var axisId = "axis" + i;
+      chart.addSeries({
+        name: headers[i],
+        data: seriesData
+      });
+    }
+  }
+
+  function loadUrl() {
+    loadUrlFrom(document.getElementById("inputUrl").value);
+  };
+
+  function loadUrlFrom(url) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.responseType = 'text';
+    xhr.onload = function () {
+      if (xhr.readyState === xhr.DONE) {
+        if (xhr.status === 200) {
+          document.getElementById("cps").value = xhr.responseText;
+        }
+      }
+    };
+    xhr.send(null);
+  };
+
+</script>
+
 <body>
-    <div class="container">
-        <h1>COPASI Emscripten Test</h1>
-        <p class="text-justify">During HARMONY 2023, I've started experimenting with 
-          emscripten. This is a first test, getting COPASI to work. 
-          Simply upload a COPASI file and have it run (it will run a 
-          time course simulation). Experimentally some basic processing
-          changes can be made, like changing durations or changing the 
-          simulation method.
-        </p>
+  <div class="container-fluid">
 
-        <input type="file" name="inputfile" id="inputfile">
-        <br>
-        <script type="text/javascript">
-            document.getElementById('inputfile')
-                .addEventListener('change', function () {
-                    var fr = new FileReader();
-                    fr.onload = function () {
-                        var modelString = fr.result;
-                        document.getElementById("cps").value = modelString;
-                    }
-                    fr.readAsText(this.files[0]);
-                })
-        </script>
+    <h1>COPASI Emscripten Test</h1>
+    <p class="text-justify">During HARMONY 2023, I've started experimenting with
+      emscripten. This is a first test, getting COPASI to work.
+      Simply upload a COPASI file and have it run (it will run a
+      time course simulation). Experimentally some basic processing
+      changes can be made, like changing durations or changing the
+      simulation method.
+    </p>
 
-        <a  class="btn btn-sm" data-toggle="collapse" href="#cps_form" role="button" aria-expanded="false" aria-controls="cps_form">show cps</a>  
-        <a  class="btn btn-sm" data-toggle="collapse" href="#yaml_form" role="button" aria-expanded="false" aria-controls="yaml_form">show yaml</a>  
-        <div class="form-group collapse" id="cps_form">
-            <label for="cps">CPS Model:</label>
-            <textarea id="cps" class="form-control" rows="8"></textarea>
+    <div class="panel-group">
+      <ul class="nav nav-tabs" id="mytab">
+        <li class="active"><a href="#fileTab">File</a></li>
+        <li><a href="#urlTab">Url</a></li>
+        <li><a href="#examples">Examples</a></li>
+      </ul>
+
+      <div class="tab-content">
+        <div id="fileTab" class="tab-pane fade in active">
+          <div class="form-group">
+            <label class="form-label" for="inputfile">Upload SBML / COPASI file</label>
+            <input type="file" class="form-control" name="inputfile" id="inputfile">
+          </div>
         </div>
-        
-        <div class="form-group collapse" id="yaml_form">
-          <label for="yaml">Processing: </label>
-          <small> Changes for processing in yaml like 
-          <pre>{"problem":{"Duration": 100, "StepNumber": 100, "StepSize": 0.1}}</pre> or 
-          <pre>{"method": {"name": "Stochastic (Gibson + Bruck)"}}</pre></small>
-          <textarea id="yaml" class="form-control" rows="8">{}</textarea>
+        <div id="urlTab" class="tab-pane fade">
+          <div class="form-group">
+            <label class="form-label" for="inputUrl">Specify URL (that is not access restricted)</label>
+            <input type="text" class="form-control" name="inputUrl" id="inputUrl"
+              value="https://raw.githubusercontent.com/copasi/COPASI/develop/TestSuite/distribution/brusselator.cps">
+            <a class="btn btn-sm" onclick="loadUrl()">Load</a>
+          </div>
         </div>
-
-        <p></p>
-        <button onclick="runSimulation()">Load &amp; Simulate</button>
-        <button onclick="alert(getVersion())">Get Version</button>
-        <button onclick="clearForm()">Clear</button>
-
-        <div id="chart"></div>
-        <div id="data" class="table"></div>
-
+        <div id="examples" class="tab-pane fade">
+          <div>
+            <small>Some examples so that i can try it on a phone</small>
+          </div>
+          <div>
+            <a class="btn btn-sm"
+              onclick='loadUrlFrom("https://raw.githubusercontent.com/copasi/COPASI/develop/TestSuite/distribution/brusselator.cps")'>Brusselator</a>
+            |
+            <a class="btn btn-sm"
+              onclick='loadUrlFrom("https://raw.githubusercontent.com/copasi/COPASI/develop/TestSuite/distribution/MAPK-HF96-layout.cps")'>MAPK-HF96-layout.cps
+              (this one takes a while)</a>
+            |
+            <a class="btn btn-sm"
+              onclick='loadUrlFrom("https://raw.githubusercontent.com/copasi/COPASI/develop/TestSuite/distribution/DimericMWC-stiff.cps")'>DimericMWC-stiff.cps</a>
+          </div>
+        </div>
+      </div>
     </div>
+
+
+    <div>
+      <a class="btn btn-sm" data-toggle="collapse" href="#cps_form" role="button" aria-expanded="false"
+        aria-controls="cps_form">show cps</a>
+      <a class="btn btn-sm" data-toggle="collapse" href="#yaml_form" role="button" aria-expanded="false"
+        aria-controls="yaml_form">show yaml</a>
+      <div class="form-group collapse" id="cps_form">
+        <label for="cps">CPS Model:</label>
+        <textarea id="cps" class="form-control" rows="8"></textarea>
+      </div>
+
+      <div class="form-group collapse" id="yaml_form">
+        <label for="yaml">Processing: </label>
+        <small> Changes for processing in yaml like
+          <pre>{"problem":{"Duration": 100, "StepNumber": 100, "StepSize": 0.1}}</pre> or
+          <pre>{"method": {"name": "Stochastic (Gibson + Bruck)"}}</pre>
+        </small>
+        <textarea id="yaml" class="form-control" rows="8">{}</textarea>
+      </div>
+    </div>
+
+    <button onclick="runSimulation()">Load &amp; Simulate</button>
+    <button onclick="alert(getVersion())">Get Version</button>
+    <button onclick="clearForm()">Clear</button>
+
+    <div id="chart"></div>
+
+    <a class="btn btn-sm" data-toggle="collapse" href="#data" role="button" aria-expanded="false"
+      aria-controls="data">show data</a>
+
+    <div id="data" class="table collapse"></div>
+  </div>
+
+  </div>
 </body>
 
-<script>
-    var getVersion;
-    var getMessages;
-    var simulateModel;
-    var initCps;
-    var jsAllocateUTF8;
-    var jsUTF8ToString;
-    var jsFree;
-    var destroy;
-
-
-    Module.onRuntimeInitialized = _ => {
-        getVersion = Module.cwrap('getVersion', 'string', ['null']);
-        getMessages = Module.cwrap('getMessages', 'string', ['null']);
-        initCps = Module.cwrap('initCps', 'null', ['null']);
-        destroy = Module.cwrap('destroy', 'null', ['null']);
-        simulateModel = Module.cwrap('simulateModel', 'number', ['number', 'number']);
-        jsUTF8ToString = (strPtr) => Module.UTF8ToString(strPtr);
-        jsAllocateUTF8 = (newStr) => Module.allocateUTF8(newStr);
-        jsFree = Module.cwrap('cpsFree', 'null', ['number']);
-
-        console.log(getVersion());
-        initCps();
-    };
-
-    function clearForm() {
-        document.getElementById("cps").value = "";
-        document.getElementById("yaml").value = "{}";
-        document.getElementById('inputfile').value = "";
-        document.getElementById("data").innerHTML = "";
-        document.getElementById("chart").innerHTML = "";
-        destroy();
-    }
-
-    function runSimulation() {
-
-        document.getElementById("data").innerHTML = "";
-        document.getElementById("chart").innerHTML = "";
-
-        var cpsCode = document.getElementById("cps").value;
-        var ptrCode = Module.allocateUTF8(cpsCode);
-        var yamlCode = document.getElementById("yaml").value;
-        var ptrYaml = Module.allocateUTF8(yamlCode);
-        var ptrResult = simulateModel(ptrCode, ptrYaml);
-        var result = Module.UTF8ToString(ptrResult);
-
-        jsFree(ptrCode);
-        jsFree(ptrYaml);
-        jsFree(ptrResult);
-
-        document.getElementById("data").innerHTML = result;
-
-        if (result.startsWith("Error")) {
-            document.getElementById("data").innerHTML += getMessages();
-            return;
-        }
-
-        // set class of first child to table
-        document.getElementById("data").firstChild.className = "table";
-        document.getElementById("data").firstChild.id = "dataTable";
-
-        // create chart from data table
-        var table = document.getElementById("data").firstChild;
-        var data = [];
-        var headers = [];
-        var series = []
-        var numRows = table.rows.length;
-        table.cols
-        // get data by column
-        for (var i = 0; i < table.rows.length; i++) {
-            var row = table.rows[i];
-            var rowData = [];
-            for (var j = 0; j < row.cells.length; j++) {
-                if (i == 0) {
-                    headers.push(row.cells[j].innerHTML);
-                } else {
-                    rowData.push(parseFloat(row.cells[j].innerHTML));
-                }
-            }
-            if (i != 0) {
-                data.push(rowData);
-            }
-        }
-
-        // use highcharts to display data
-        var chart = Highcharts.chart('chart', {
-            chart: {
-                type: 'line'
-            },
-            title: {
-                text: 'Simulation Results'
-            },
-            xAxis: {
-                title: {
-                    text: 'Time'
-                }
-            },
-            plotOptions: {
-                line: {
-                    dataLabels: {
-                        enabled: false
-                    },
-                    enableMouseTracking: true
-                }
-            }
-        });
-
-        for (var i = 1; i < headers.length; i++) {
-            var seriesData = [];
-            for (var j = 0; j < data.length; j++) {
-                seriesData.push([data[j][0], data[j][i]]);
-            }
-            var axisId = "axis" + i;
-            chart.addSeries({
-                name: headers[i],
-                data: seriesData
-            });
-        }
-        
-
-
-    }
-</script>
 
 </html>

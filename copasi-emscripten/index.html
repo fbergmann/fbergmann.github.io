@@ -21,6 +21,13 @@
 <body>
     <div class="container">
         <h1>COPASI Emscripten Test</h1>
+        <p class="text-justify">During HARMONY 2023, I've started experimenting with 
+          emscripten. This is a first test, getting COPASI to work. 
+          Simply upload a COPASI file and have it run (it will run a 
+          time course simulation). Experimentally some basic processing
+          changes can be made, like changing durations or changing the 
+          simulation method.
+        </p>
 
         <input type="file" name="inputfile" id="inputfile">
         <br>
@@ -36,10 +43,19 @@
                 })
         </script>
 
-        
-        <div class="form-group">
+        <a  class="btn btn-sm" data-toggle="collapse" href="#cps_form" role="button" aria-expanded="false" aria-controls="cps_form">show cps</a>  
+        <a  class="btn btn-sm" data-toggle="collapse" href="#yaml_form" role="button" aria-expanded="false" aria-controls="yaml_form">show yaml</a>  
+        <div class="form-group collapse" id="cps_form">
             <label for="cps">CPS Model:</label>
             <textarea id="cps" class="form-control" rows="8"></textarea>
+        </div>
+        
+        <div class="form-group collapse" id="yaml_form">
+          <label for="yaml">Processing: </label>
+          <small> Changes for processing in yaml like 
+          <pre>{"problem":{"Duration": 100, "StepNumber": 100, "StepSize": 0.1}}</pre> or 
+          <pre>{"method": {"name": "Stochastic (Gibson + Bruck)"}}</pre></small>
+          <textarea id="yaml" class="form-control" rows="8">{}</textarea>
         </div>
 
         <p></p>
@@ -69,7 +85,7 @@
         getMessages = Module.cwrap('getMessages', 'string', ['null']);
         initCps = Module.cwrap('initCps', 'null', ['null']);
         destroy = Module.cwrap('destroy', 'null', ['null']);
-        simulateModel = Module.cwrap('simulateModel', 'number', ['number']);
+        simulateModel = Module.cwrap('simulateModel', 'number', ['number', 'number']);
         jsUTF8ToString = (strPtr) => Module.UTF8ToString(strPtr);
         jsAllocateUTF8 = (newStr) => Module.allocateUTF8(newStr);
         jsFree = Module.cwrap('cpsFree', 'null', ['number']);
@@ -80,6 +96,7 @@
 
     function clearForm() {
         document.getElementById("cps").value = "";
+        document.getElementById("yaml").value = "{}";
         document.getElementById('inputfile').value = "";
         document.getElementById("data").innerHTML = "";
         document.getElementById("chart").innerHTML = "";
@@ -93,10 +110,13 @@
 
         var cpsCode = document.getElementById("cps").value;
         var ptrCode = Module.allocateUTF8(cpsCode);
-        var ptrResult = simulateModel(ptrCode);
+        var yamlCode = document.getElementById("yaml").value;
+        var ptrYaml = Module.allocateUTF8(yamlCode);
+        var ptrResult = simulateModel(ptrCode, ptrYaml);
         var result = Module.UTF8ToString(ptrResult);
 
         jsFree(ptrCode);
+        jsFree(ptrYaml);
         jsFree(ptrResult);
 
         document.getElementById("data").innerHTML = result;

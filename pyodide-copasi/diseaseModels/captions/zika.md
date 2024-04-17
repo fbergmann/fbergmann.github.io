@@ -1,0 +1,3 @@
+The total human population is divided into susceptible humans S<sub>H</sub>(t), exposed human E<sub>H</sub>(t), infected humans I<sub>H</sub>(t), and recovered humans R<sub>H</sub>(t). The entire mosquito population is partitioned into susceptible vector S<sub>V</sub>(t), exposed vector E<sub>V</sub>(t) and infected mosquito I<sub>V</sub>(t).
+
+Model Source Citation: Ebenezer Bonyah, Muhammad Altaf Khan, KO Okosun, and Saeed Islam. A theoretical model for zika virus transmission.PloS one, 12(10):e0185540, 2017.

@@ -1,0 +1,5 @@
+The health states are susceptible (S), exposed and possibly infectious individuals (E), symptomatic infectious and undiagnosed individuals (I), disease-induced deaths (D) and recovered (R) individuals. 
+
+Susceptible individuals move to the infected compartment through "effective" contacts with either infected individuals or infected corpses. Infected individuals (E) spend some days in latency state, without being infectious. After the latency period, individuals become infectious (I), after which, individuals either recover or die. Ebola-infected corpses (D) subpopulation is reduced through properly burial. Ebola-infected corpses are assumed to be more infectious than infected individuals due to have the highest viral load.
+
+Model Source Citation: Baltazar Cortes Espinoza.Consequences of Short Term Mobility Across Heterogeneous Risk Environments: The 2014 West African Ebola Outbreak. Arizona State University, 2018.

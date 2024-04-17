@@ -1,0 +1,5 @@
+The health classes are Susceptible individuals (S), Infected and infectious individuals (I), Infected and not infectious individuals due to treatment (T), and Recovered individuals (R). Some susceptible individuals are vaccinated (P) and loss immunity after a period of time.
+
+The fraction of recruited susceptible individuals are assumed to be vaccinated, becoming temporary protected against Typhoid. A fraction of non-vaccinated recruited individuals becomes susceptible. Typhoid is transmitted by contacts between infected and susceptible individuals. Infected individuals either, undergo disease-induced death, go to treatment, or die by other reasons. Individuals under treatment recover, loosing natural immunity, or die out by other reasons.
+
+Model Source Citation:  OJ  Peter,  MO  Ibrahim,  OB  Akinduko,  and  M  Rabiu.   Mathematical  model  for  thecontrol  of  typhoid  fever. IOSR Journal of Mathematics (IOSR-JM). e-ISSN,  pages2278–5728, 2017.

@@ -1,0 +1,1 @@
+Model Source Citation: Ibrahim M ELmojtaba, JYT Mugisha, and Mohsin HA Hashim.  Mathematical analysis of the dynamics of Visceral Leishmaniasis in the Sudan. Applied Mathematics and Computation, 217(6):2567–2578, 2010.

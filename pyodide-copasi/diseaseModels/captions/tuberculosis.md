@@ -1,0 +1,5 @@
+The health classes are Susceptible (S), Exposed (E), Infected (I) and individuals under treatment (T).
+
+Due to the worldwide endemic situation of TB, the model incorporates demography processes by assuming a constant recruitment of susceptible individuals. Susceptible individuals become exposed by direct contacts with infected people. Exposed individuals are assumed to become infectious by contacts with infected individuals or, by endogenous progression, otherwise exposed individuals die out. Infectious individuals die out naturally, receive treatment or die due to the disease. Finally, individuals under treatment either become infectious again by contact with infected individuals or die out naturally.
+
+Model Source Citation: Zhilan Feng, Carlos Castillo-Chavez, and Angel F Capurro.  A model for tuberculosis with exogenous reinfection.Theoretical population biology, 57(3):235–247, 2000.

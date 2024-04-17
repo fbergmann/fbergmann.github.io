@@ -1,0 +1,3 @@
+The health states are Susceptible individuals S(t), Exposed individuals, but not yet infectious E(t), Infectious individuals I(t), and Recovered or removed artificially trough vaccination and permanently immune individuals R(t).
+
+Model Source Citation: Ousmane Moussa Tessa. Mathematical model for control of measles by vaccination. In Proceedings of Mali Symposium on Applied Sciences, volume 2006, pages 31–36, 2006.

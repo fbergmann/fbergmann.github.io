@@ -1,0 +1,1 @@
+Model Source Citation:  Rachel E Baker, Wenchang Yang, Gabriel A Vecchi, C Jessica E Metcalf, and Bryan T Grenfell. Susceptible supply limits the role of climate in the early sars-cov-2 pandemic.Science, 369(6501):315–319, 2020.

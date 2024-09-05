@@ -1,12 +1,10 @@
+
 <html lang="en">
 
 <head>
-  <script src="bind_test.js" type="text/javascript"></script>
-  <script src="bind_test.wasm" type="application/wasm"> </script>
-  <script src="https://code.highcharts.com/highcharts.js"></script>
-  <script src="https://code.highcharts.com/modules/exporting.js"></script>
-  <script src="https://code.highcharts.com/modules/export-data.js"></script>
-  <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+  <script src="copasi.js" type="text/javascript"></script>
+  <script src="copasijs.js" type="text/javascript"> </script>
+  <script src='https://cdn.plot.ly/plotly-2.27.0.min.js'></script>
   <!-- Latest compiled and minified CSS -->
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
 
@@ -19,34 +17,12 @@
 </head>
 
 <script>
-  var getVersion = null;
-  var getMessages = null;
-  var simulateModel = null;
-  var initCps = null;
-  var jsAllocateUTF8 = null;
-  var jsUTF8ToString = null;
-  var jsFree = null;
-  var destroy = null;
+  var copasi = null;
+  createCpsModule().then(module => {
+    copasi = new COPASI(module);
+    console.log(copasi.version);
+  });
 
-  function initFunctions() {
-    getVersion = Module.cwrap('getVersion', 'string', ['null']);
-    getMessages = Module.cwrap('getMessages', 'string', ['null']);
-    initCps = Module.cwrap('initCps', 'null', ['null']);
-    destroy = Module.cwrap('destroy', 'null', ['null']);
-    simulateModel = Module.cwrap('simulateModel', 'number', ['number', 'number']);
-    jsUTF8ToString = (strPtr) => Module.UTF8ToString(strPtr);
-    jsAllocateUTF8 = (newStr) => Module.allocateUTF8(newStr);
-    jsFree = Module.cwrap('cpsFree', 'null', ['number']);
-
-    console.log(getVersion());
-    initCps();
-  };
-
-  Module.onRuntimeInitialized = _ => {
-
-    initFunctions();
-
-  };
 
   $(document).ready(function () {
 
@@ -74,96 +50,49 @@
     document.getElementById("yaml").value = "{}";
     document.getElementById('inputfile').value = "";
     document.getElementById("data").innerHTML = "";
-    document.getElementById("chart").innerHTML = "";
-    destroy();
+    document.getElementById("chart").innerHTML = "";    
   };
 
   function runSimulation() {
-    if (simulateModel == null) {
-      initFunctions();
+    if (copasi == null) {
+      return;
     }
     document.getElementById("data").innerHTML = "";
     document.getElementById("chart").innerHTML = "";
 
-    var cpsCode = document.getElementById("cps").value;
-    var ptrCode = Module.allocateUTF8(cpsCode);
-    var yamlCode = document.getElementById("yaml").value;
-    var ptrYaml = Module.allocateUTF8(yamlCode);
-    var ptrResult = simulateModel(ptrCode, ptrYaml);
-    var result = Module.UTF8ToString(ptrResult);
+    var result = copasi.simulateYaml(document.getElementById("yaml").value);
 
-    jsFree(ptrCode);
-    jsFree(ptrYaml);
-    jsFree(ptrResult);
-
-    document.getElementById("data").innerHTML = result;
-
-    if (result.startsWith("Error")) {
-      document.getElementById("data").innerHTML += getMessages();
-      return;
-    }
-
-    // set class of first child to table
-    document.getElementById("data").firstChild.className = "table";
-    document.getElementById("data").firstChild.id = "dataTable";
-
-    // create chart from data table
-    var table = document.getElementById("data").firstChild;
-    var data = [];
-    var headers = [];
-    var series = []
-    var numRows = table.rows.length;
-    table.cols
-    // get data by column
-    for (var i = 0; i < table.rows.length; i++) {
-      var row = table.rows[i];
-      var rowData = [];
-      for (var j = 0; j < row.cells.length; j++) {
-        if (i == 0) {
-          headers.push(row.cells[j].innerHTML);
-        } else {
-          rowData.push(parseFloat(row.cells[j].innerHTML));
-        }
-      }
-      if (i != 0) {
-        data.push(rowData);
-      }
-    }
+    // dump data
+    document.getElementById("data").innerHTML = JSON.stringify(result);
 
     // use highcharts to display data
-    var chart = Highcharts.chart('chart', {
-      chart: {
-        type: 'line'
-      },
-      title: {
-        text: 'Simulation Results'
-      },
-      xAxis: {
-        title: {
-          text: 'Time'
-        }
-      },
-      plotOptions: {
-        line: {
-          dataLabels: {
-            enabled: false
-          },
-          enableMouseTracking: true
-        }
-      }
-    });
-
-    for (var i = 1; i < headers.length; i++) {
-      var seriesData = [];
-      for (var j = 0; j < data.length; j++) {
-        seriesData.push([data[j][0], data[j][i]]);
-      }
-      var axisId = "axis" + i;
-      chart.addSeries({
-        name: headers[i],
-        data: seriesData
+    var data = [];
+    for (var i = 1; i < result.num_variables; i++) {
+      data.push({
+        name: result.columns[i][0],
+        x: result.columns[0],
+        y: result.columns[i],
+        type: "scatter",
+        name: result.titles[i]
       });
     }
+
+    Plotly.newPlot('chart', data);
+  }
+
+  function loadIntoCOPASI()
+  {
+    if (copasi == null) {
+      return;
+    }
+    var info = copasi.loadModel(document.getElementById("cps").value);
+    document.getElementById("modelName").innerHTML = "none";
+    if (info['status'] != "success") {
+      alert("Error loading model: " + info['messages']);
+      return;
+    }
+    document.getElementById("modelName").innerHTML = info['model']['name'];
+
   }
 
   function loadUrl() {
@@ -189,14 +118,12 @@
 <body>
   <div class="container-fluid">
 
-    <h1>COPASI Emscripten Test</h1>
-    <p class="text-justify">During HARMONY 2023, I've started experimenting with
-      emscripten. This is a first test, getting COPASI to work.
-      Simply upload a COPASI file and have it run (it will run a
-      time course simulation). Experimentally some basic processing
-      changes can be made, like changing durations or changing the
-      simulation method.
-    </p>
+    <h1>COPASI.js Test</h1>
+
+    <div style="float: right;">
+    <a href="#"> Default Version </a> | 
+    <a href="simple.html"> Simple Version </a>
+    </div>
 
     <div class="panel-group">
       <ul class="nav nav-tabs" id="mytab">
@@ -222,7 +149,7 @@
         </div>
         <div id="examples" class="tab-pane fade">
           <div>
-            <small>Some examples so that i can try it on a phone</small>
+            <small>Some examples</small>
           </div>
           <div>
             <a class="btn btn-sm"
@@ -267,9 +194,17 @@
       </div>
     </div>
 
-    <button onclick="runSimulation()">Load &amp; Simulate</button>
-    <button onclick="alert(getVersion())">Get Version</button>
+    <button onclick="loadIntoCOPASI()">Load</button>
+    <button onclick="runSimulation()">Simulate</button>
+    <button onclick="copasi.reset()">Reset</button>
+    <button onclick="alert(copasi.version)">Get Version</button>
     <button onclick="clearForm()">Clear</button>
+
+    <p></p>
+
+    <p class="lead">
+        Current Model: <span id="modelName">none</span>
+    </p>
 
     <div id="chart"></div>
 

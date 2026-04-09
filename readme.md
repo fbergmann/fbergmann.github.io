@@ -5,6 +5,8 @@
 * [Simulate 3D](https://github.com/fbergmann/3DSimulate)
 * [COPASI Emscripten Experiment](./copasi-emscripten)
 * [COPASI Vue3 Pyodide page](./pyodide-copasi)
+* [Pyodide Wheels](./pyodide-wheels/)
+
 
 <details>
   <div style="display:none">
